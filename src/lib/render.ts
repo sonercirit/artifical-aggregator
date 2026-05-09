@@ -784,7 +784,6 @@ table { width: 100%; border-collapse: collapse; min-width: 980px; }
 th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
 th { position: sticky; top: 0; z-index: 1; background: var(--panel); color: var(--muted); font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
 th.num .th-label { justify-content: flex-end; width: 100%; }
-th.has-custom-tip .th-label { cursor: help; }
 tr:hover td { background: var(--hover); }
 tr.frontier td:first-child { border-left: 3px solid var(--good); }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
