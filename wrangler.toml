@@ -1,0 +1,15 @@
+name = "artificial-aggrerator"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+
+[triggers]
+crons = ["0 * * * *"]
+
+[vars]
+AA_SOURCE_URL = "https://artificialanalysis.ai/models"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "artificial-aggrerator"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "drizzle"

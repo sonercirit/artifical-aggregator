@@ -1,0 +1,260 @@
+import { Hono } from "hono";
+import type { ScoreOptions, ScoredRow } from "./lib/aa";
+import { parseScoreOptions, scoreRows } from "./lib/aa";
+import type { TimelineResult } from "./lib/db";
+import {
+  getLatestSuccessfulRun,
+  getModelSummaries,
+  getRawHtmlBase64Chunks,
+  getResultsForRun,
+  getResultsForSuccessfulRuns,
+  getRun,
+  getRuns,
+  getTimelineForModel,
+} from "./lib/db";
+import { runFetchJob } from "./lib/job";
+import {
+  renderErrorPage,
+  renderHistory,
+  renderHome,
+  renderModelTimeline,
+  renderRunDetail,
+  renderRuns,
+} from "./lib/render";
+import { gunzipBase64ChunksToString } from "./lib/storage";
+import type { Bindings } from "./types";
+
+const app = new Hono<{ Bindings: Bindings }>();
+
+app.get("/", async (c) => {
+  const url = new URL(c.req.url);
+  const options = parseScoreOptions(url.searchParams);
+  const requestedRunId = positiveInt(url.searchParams.get("run"));
+  const runs = await getRuns(c.env, 50);
+  const run = requestedRunId
+    ? await getRun(c.env, requestedRunId)
+    : await getLatestSuccessfulRun(c.env);
+
+  if (!run || run.status !== "success") {
+    return c.html(
+      renderHome({
+        run: null,
+        runs,
+        rows: [],
+        options,
+        selectedRunId: requestedRunId,
+        topQualityModel: null,
+        effectiveSortBy: options.sort,
+        winnerTimeline: [],
+      }),
+      run ? 404 : 200,
+    );
+  }
+
+  const [results, historicResults] = await Promise.all([
+    getResultsForRun(c.env, run.id),
+    getResultsForSuccessfulRuns(c.env, 500),
+  ]);
+  const scored = scoreRows(results, options);
+  const winnerTimeline = buildWinnerTimeline(historicResults, options);
+
+  return c.html(
+    renderHome({
+      run,
+      runs,
+      rows: scored.rows,
+      options,
+      selectedRunId: run.id,
+      topQualityModel: scored.topQualityModel,
+      effectiveSortBy: scored.effectiveSortBy,
+      winnerTimeline,
+    }),
+  );
+});
+
+app.get("/runs", async (c) => {
+  const runs = await getRuns(c.env, 250);
+  return c.html(renderRuns(runs));
+});
+
+app.get("/runs/:id", async (c) => {
+  const runId = positiveInt(c.req.param("id"));
+  if (!runId) return c.html(renderErrorPage("Not found", "Invalid run id"), 404);
+
+  const run = await getRun(c.env, runId);
+  if (!run) return c.html(renderErrorPage("Not found", `Run #${runId} does not exist`), 404);
+
+  const options = parseScoreOptions(new URL(c.req.url).searchParams);
+  const results = await getResultsForRun(c.env, run.id);
+  const scored = scoreRows(results, options);
+
+  return c.html(
+    renderRunDetail({
+      run,
+      rows: scored.rows,
+      options,
+      topQualityModel: scored.topQualityModel,
+    }),
+  );
+});
+
+app.get("/runs/:id/raw", async (c) => {
+  const runId = positiveInt(c.req.param("id"));
+  if (!runId) return c.text("Invalid run id", 400);
+
+  const run = await getRun(c.env, runId);
+  if (!run) return c.text("Run not found", 404);
+
+  const chunks = await getRawHtmlBase64Chunks(c.env, runId);
+  if (chunks.length === 0) return c.text("Raw HTML not found for this run", 404);
+
+  const html = await gunzipBase64ChunksToString(chunks);
+  return new Response(html, {
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "private, max-age=0",
+      "x-aa-run-id": String(run.id),
+      "x-aa-html-sha256": run.html_sha256 ?? "",
+    },
+  });
+});
+
+app.get("/history", async (c) => {
+  const models = await getModelSummaries(c.env);
+  return c.html(renderHistory(models));
+});
+
+app.get("/models/:modelKey", async (c) => {
+  const modelKey = c.req.param("modelKey");
+  const options = parseScoreOptions(new URL(c.req.url).searchParams);
+  const timeline = await getTimelineForModel(c.env, modelKey, 2000);
+  const scored = scoreRows(timeline, { ...options, sort: "score", limit: 2000 }).rows.sort(
+    (a, b) =>
+      String(a.runCompletedAt ?? a.runStartedAt).localeCompare(
+        String(b.runCompletedAt ?? b.runStartedAt),
+      ),
+  );
+
+  return c.html(renderModelTimeline({ modelKey, timeline: scored, options }));
+});
+
+app.get("/api/runs", async (c) => {
+  const runs = await getRuns(c.env, 250);
+  return c.json({ runs });
+});
+
+app.get("/api/runs/:id/results", async (c) => {
+  const runId = positiveInt(c.req.param("id"));
+  if (!runId) return c.json({ error: "Invalid run id" }, 400);
+
+  const run = await getRun(c.env, runId);
+  if (!run) return c.json({ error: "Run not found" }, 404);
+
+  const options = parseScoreOptions(new URL(c.req.url).searchParams);
+  const results = await getResultsForRun(c.env, run.id);
+  const scored = scoreRows(results, options);
+
+  return c.json({
+    run,
+    options,
+    effectiveSortBy: scored.effectiveSortBy,
+    topQualityModel: scored.topQualityModel,
+    rows: scored.rows.slice(0, options.limit),
+  });
+});
+
+app.get("/api/winners", async (c) => {
+  const url = new URL(c.req.url);
+  const options = parseScoreOptions(url.searchParams);
+  const runLimit = positiveInt(url.searchParams.get("runs")) ?? 500;
+  const historicResults = await getResultsForSuccessfulRuns(c.env, Math.min(runLimit, 2000));
+  const winners = buildWinnerTimeline(historicResults, options);
+
+  return c.json({ options, winners });
+});
+
+app.get("/api/models/:modelKey/timeline", async (c) => {
+  const modelKey = c.req.param("modelKey");
+  const options = parseScoreOptions(new URL(c.req.url).searchParams);
+  const timeline = await getTimelineForModel(c.env, modelKey, 2000);
+  const scored = scoreRows(timeline, { ...options, sort: "score", limit: 2000 }).rows.sort(
+    (a, b) =>
+      String(a.runCompletedAt ?? a.runStartedAt).localeCompare(
+        String(b.runCompletedAt ?? b.runStartedAt),
+      ),
+  );
+
+  return c.json({ modelKey, options, timeline: scored });
+});
+
+app.post("/admin/fetch", async (c) => {
+  const auth = c.req.header("authorization") ?? "";
+  const token = new URL(c.req.url).searchParams.get("token");
+  const expected = c.env.ADMIN_TOKEN;
+
+  if (!expected) {
+    return c.json({ error: "ADMIN_TOKEN is not configured" }, 403);
+  }
+
+  if (auth !== `Bearer ${expected}` && token !== expected) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  const result = await runFetchJob(c.env, { force: true });
+  return c.json(result);
+});
+
+app.get("/healthz", (c) => c.json({ ok: true }));
+
+app.notFound((c) => c.html(renderErrorPage("Not found", "This page does not exist."), 404));
+
+app.onError((error, c) => {
+  console.error(error);
+  return c.html(renderErrorPage("Error", error.message), 500);
+});
+
+export default {
+  fetch: app.fetch,
+  scheduled(_event: ScheduledController, env: Bindings, ctx: ExecutionContext) {
+    ctx.waitUntil(
+      runFetchJob(env).catch((error) => {
+        console.error("Scheduled fetch failed", error);
+      }),
+    );
+  },
+};
+
+function buildWinnerTimeline(
+  results: TimelineResult[],
+  options: ScoreOptions,
+): Array<ScoredRow<TimelineResult>> {
+  const runs = new Map<number, TimelineResult[]>();
+
+  for (const result of results) {
+    const bucket = runs.get(result.runId);
+    if (bucket) {
+      bucket.push(result);
+    } else {
+      runs.set(result.runId, [result]);
+    }
+  }
+
+  const winners: Array<ScoredRow<TimelineResult>> = [];
+  for (const runResults of runs.values()) {
+    const scored = scoreRows(runResults, options);
+    const winner = scored.rows[0];
+    if (winner) winners.push(winner);
+  }
+
+  return winners.sort((a, b) =>
+    String(a.runCompletedAt ?? a.runStartedAt).localeCompare(
+      String(b.runCompletedAt ?? b.runStartedAt),
+    ),
+  );
+}
+
+function positiveInt(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
