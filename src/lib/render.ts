@@ -563,7 +563,23 @@ function renderScoresTable(rows: ScoredRow[], options: ScoreOptions): string {
     })
     .join("");
 
-  return `<div class="table-wrap"><table>
+  return `<div class="table-wrap score-table-wrap"><table class="score-table">
+    <colgroup>
+      <col class="rank-col">
+      <col class="pareto-col">
+      <col class="model-col">
+      <col class="released-col">
+      <col class="cutoff-col">
+      <col class="cost-col">
+      <col class="cost-quality-col">
+      <col class="quality-col">
+      <col class="delta-col">
+      <col class="metric-col">
+      <col class="metric-col">
+      <col class="metric-col">
+      <col class="penalty-col">
+      <col class="score-col">
+    </colgroup>
     <thead><tr>${thTip("#", "Rank after applying the selected sort.", "num")}${thTip("Pareto", "On the Pareto frontier: no cheaper model has a higher selected quality score.", "center")}${thTip("Model", "Model name. Click to open its historic timeline.")}${thTip("Released", "Model release date reported by Artificial Analysis.")}${thTip("Cutoff", "Knowledge cutoff date reported by Artificial Analysis.")}${thTip("Cost$", "AA intelligence-index benchmark cost in dollars. Lower is cheaper.", "num")}${thTip("$/Q", "Dollars per selected quality point. Lower is better.", "num")}${thTip("Qual", "Selected quality metric before cost adjustment.", "num")}${thTip("ΔTop", "Quality gap versus the top-quality model in this run.", "num")}${thTip("Intel", "Artificial Analysis intelligence index.", "num")}${thTip("Code", "Artificial Analysis coding index.", "num")}${thTip("Agent", "Artificial Analysis agentic index when available.", "num")}${thTip("Pen", "Cost penalty subtracted in sub scoring. Zero for raw/div scoring display still shows the computed penalty.", "num")}${thTip("Score", "Final calculated score for the selected mode and cost formula.", "num")}</tr></thead>
     <tbody>${tableRows || `<tr><td colspan="14" class="empty">No scored rows for these options.</td></tr>`}</tbody>
   </table></div>`;
@@ -786,6 +802,19 @@ th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: l
 th { position: sticky; top: 0; z-index: 1; background: var(--panel); color: var(--muted); font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
 th.num .th-label { justify-content: flex-end; width: 100%; }
 th.center .th-label { justify-content: center; width: 100%; }
+.score-table { min-width: 0; table-layout: fixed; font-size: .95rem; }
+.score-table th, .score-table td { padding: 8px 8px; overflow-wrap: anywhere; }
+.score-table th { font-size: .72rem; letter-spacing: .035em; }
+.score-table .th-label { max-width: 100%; gap: .25rem; }
+.score-table .tooltip { width: .95rem; height: .95rem; font-size: .64rem; }
+.score-table .rank-col { width: 4%; }
+.score-table .pareto-col { width: 6.5%; }
+.score-table .model-col { width: 17.5%; }
+.score-table .released-col { width: 9.5%; }
+.score-table .cutoff-col, .score-table .cost-quality-col, .score-table .quality-col, .score-table .delta-col, .score-table .score-col { width: 6.5%; }
+.score-table .cost-col { width: 7%; }
+.score-table .metric-col { width: 6%; }
+.score-table .penalty-col { width: 5.5%; }
 tr:hover td { background: var(--hover); }
 tr.frontier td:first-child { border-left: 3px solid var(--good); }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
