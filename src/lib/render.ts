@@ -769,6 +769,7 @@ h2 { margin: 0 0 12px; }
 .controls.compact { grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); }
 label { display: grid; gap: 6px; color: var(--muted); font-size: .9rem; }
 .label-row, .heading-row, .th-label { display: inline-flex; gap: .35rem; align-items: center; min-width: 0; }
+.th-label { white-space: nowrap; }
 .tooltip { display: inline-flex; align-items: center; justify-content: center; width: 1.05rem; height: 1.05rem; flex: 0 0 auto; border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2); color: var(--muted); font-size: .72rem; font-weight: 800; line-height: 1; cursor: help; text-transform: none; letter-spacing: normal; }
 .tooltip:hover, .tooltip:focus-visible { color: var(--text); border-color: var(--accent); outline: none; }
 .floating-tooltip { position: fixed; z-index: 9999; max-width: min(320px, calc(100vw - 16px)); padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); color: var(--text); box-shadow: 0 12px 30px rgba(0, 0, 0, .28); opacity: 0; pointer-events: none; transform: translateY(4px); transition: opacity .12s ease, transform .12s ease; white-space: normal; text-align: left; text-transform: none; letter-spacing: normal; font-size: .82rem; font-weight: 500; line-height: 1.35; }
