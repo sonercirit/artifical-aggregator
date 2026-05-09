@@ -33,9 +33,12 @@ const HELP = {
   mode: "The quality dimension used for ranking: combined averages AA intelligence, coding, and agentic scores when available.",
   calc: "How the final score is computed: raw ignores cost, sub subtracts a logarithmic cost penalty, and div divides quality by cost^power.",
   sort: "Column used to rank the comparison table and historic #1 winner timeline.",
-  costWeight: "For sub scoring, quality points subtracted for each 10x increase above the cost floor.",
-  costFloor: "Minimum benchmark cost used in cost-adjusted formulas. Costs below this are treated as this value.",
-  costPower: "For div scoring, exponent applied to benchmark cost. Use 0.5 for sqrt(cost), 0 to ignore cost.",
+  costWeight:
+    "For sub scoring, quality points subtracted for each 10x increase above the cost floor.",
+  costFloor:
+    "Minimum benchmark cost used in cost-adjusted formulas. Costs below this are treated as this value.",
+  costPower:
+    "For div scoring, exponent applied to benchmark cost. Use 0.5 for sqrt(cost), 0 to ignore cost.",
   limit: "Maximum number of rows shown in the comparison table.",
   winner: "Tracks the top-ranked model for each successful snapshot using the current filters.",
 } as const;
@@ -383,7 +386,8 @@ function renderScoreForm(
         <option value="">Latest successful</option>
         ${runs
           .map(
-            (run) => `<option value="${run.id}" ${selectedRunId === run.id ? "selected" : ""}>#${run.id} · ${escapeHtml(run.status)} · ${formatDateTime(run.completed_at ?? run.started_at)}</option>`,
+            (run) =>
+              `<option value="${run.id}" ${selectedRunId === run.id ? "selected" : ""}>#${run.id} · ${escapeHtml(run.status)} · ${formatDateTime(run.completed_at ?? run.started_at)}</option>`,
           )
           .join("")}
       </select>
@@ -426,8 +430,12 @@ function renderWinnerTimeline(
   const width = 960;
   const height = 280;
   const pad = 44;
-  const minX = Math.min(...winners.map((row) => Date.parse(row.runCompletedAt ?? row.runStartedAt)));
-  const maxX = Math.max(...winners.map((row) => Date.parse(row.runCompletedAt ?? row.runStartedAt)));
+  const minX = Math.min(
+    ...winners.map((row) => Date.parse(row.runCompletedAt ?? row.runStartedAt)),
+  );
+  const maxX = Math.max(
+    ...winners.map((row) => Date.parse(row.runCompletedAt ?? row.runStartedAt)),
+  );
   let minY = Math.min(...values);
   let maxY = Math.max(...values);
 
@@ -447,7 +455,10 @@ function renderWinnerTimeline(
   };
 
   const points = winners
-    .map((row) => `${scaleX(row.runCompletedAt ?? row.runStartedAt).toFixed(1)},${scaleY(row.calculated).toFixed(1)}`)
+    .map(
+      (row) =>
+        `${scaleX(row.runCompletedAt ?? row.runStartedAt).toFixed(1)},${scaleY(row.calculated).toFixed(1)}`,
+    )
     .join(" ");
   const changes = winners.filter(
     (row, index) => index === 0 || row.modelKey !== winners[index - 1].modelKey,
@@ -471,7 +482,9 @@ function renderWinnerTimeline(
     .slice(-12)
     .reverse()
     .map(
-      (row) => `<a class="winner-chip" href="/models/${encodeURIComponent(row.modelKey)}?${scoreOptionsToSearchParams(options).toString()}">
+      (
+        row,
+      ) => `<a class="winner-chip" href="/models/${encodeURIComponent(row.modelKey)}?${scoreOptionsToSearchParams(options).toString()}">
         <strong>${escapeHtml(row.name)}</strong>
         <span>${formatDateTime(row.runCompletedAt ?? row.runStartedAt)} · ${fmt(row.calculated, options.calc === "div" ? 4 : 1)}</span>
       </a>`,
@@ -533,7 +546,7 @@ function renderScoresTable(rows: ScoredRow[], options: ScoreOptions): string {
       const timelineUrl = `/models/${encodeURIComponent(row.modelKey)}?${params.toString()}`;
       return `<tr class="${row.frontier ? "frontier" : ""}">
         <td class="num">${index + 1}</td>
-        <td>${link(timelineUrl, row.name)}${row.frontier ? " <span title=\"Pareto frontier\">✓</span>" : ""}<br><small>${escapeHtml(row.creatorName ?? "")}</small></td>
+        <td>${link(timelineUrl, row.name)}${row.frontier ? ' <span title="Pareto frontier">✓</span>' : ""}<br><small>${escapeHtml(row.creatorName ?? "")}</small></td>
         <td>${escapeHtml(row.releaseDate ?? "-")}</td>
         <td>${escapeHtml(row.cutoffDate ?? "-")}</td>
         <td class="num">${formatMoney(row.totalCost)}</td>
@@ -594,7 +607,9 @@ function renderLineChart(input: {
   const points = rows
     .map((row) => {
       const v = value(row);
-      return v == null ? null : `${scaleX(row.runCompletedAt ?? row.runStartedAt).toFixed(1)},${scaleY(v).toFixed(1)}`;
+      return v == null
+        ? null
+        : `${scaleX(row.runCompletedAt ?? row.runStartedAt).toFixed(1)},${scaleY(v).toFixed(1)}`;
     })
     .filter((point): point is string => point != null)
     .join(" ");
@@ -633,7 +648,8 @@ function selectControl<T extends readonly string[]>(
     <select name="${escapeAttr(name)}">
       ${values
         .map(
-          (value) => `<option value="${escapeAttr(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(value)}</option>`,
+          (value) =>
+            `<option value="${escapeAttr(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(value)}</option>`,
         )
         .join("")}
     </select>
@@ -649,7 +665,9 @@ function headingWithTip(label: string, help: string): string {
 }
 
 function thTip(label: string, help: string, className = ""): string {
-  const classAttr = className ? ` class="${escapeAttr(`${className} has-custom-tip`)}"` : ` class="has-custom-tip"`;
+  const classAttr = className
+    ? ` class="${escapeAttr(`${className} has-custom-tip`)}"`
+    : ` class="has-custom-tip"`;
   return `<th${classAttr}><span class="th-label">${escapeHtml(label)}${tip(help)}</span></th>`;
 }
 

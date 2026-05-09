@@ -128,11 +128,10 @@ app.get("/models/:modelKey", async (c) => {
   const modelKey = c.req.param("modelKey");
   const options = parseScoreOptions(new URL(c.req.url).searchParams);
   const timeline = await getTimelineForModel(c.env, modelKey, 2000);
-  const scored = scoreRows(timeline, { ...options, sort: "score", limit: 2000 }).rows.sort(
-    (a, b) =>
-      String(a.runCompletedAt ?? a.runStartedAt).localeCompare(
-        String(b.runCompletedAt ?? b.runStartedAt),
-      ),
+  const scored = scoreRows(timeline, { ...options, sort: "score", limit: 2000 }).rows.sort((a, b) =>
+    String(a.runCompletedAt ?? a.runStartedAt).localeCompare(
+      String(b.runCompletedAt ?? b.runStartedAt),
+    ),
   );
 
   return c.html(renderModelTimeline({ modelKey, timeline: scored, options }));
@@ -177,11 +176,10 @@ app.get("/api/models/:modelKey/timeline", async (c) => {
   const modelKey = c.req.param("modelKey");
   const options = parseScoreOptions(new URL(c.req.url).searchParams);
   const timeline = await getTimelineForModel(c.env, modelKey, 2000);
-  const scored = scoreRows(timeline, { ...options, sort: "score", limit: 2000 }).rows.sort(
-    (a, b) =>
-      String(a.runCompletedAt ?? a.runStartedAt).localeCompare(
-        String(b.runCompletedAt ?? b.runStartedAt),
-      ),
+  const scored = scoreRows(timeline, { ...options, sort: "score", limit: 2000 }).rows.sort((a, b) =>
+    String(a.runCompletedAt ?? a.runStartedAt).localeCompare(
+      String(b.runCompletedAt ?? b.runStartedAt),
+    ),
   );
 
   return c.json({ modelKey, options, timeline: scored });

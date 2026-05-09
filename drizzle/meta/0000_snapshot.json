@@ -121,17 +121,12 @@
       "indexes": {
         "fetch_runs_status_completed_idx": {
           "name": "fetch_runs_status_completed_idx",
-          "columns": [
-            "status",
-            "completed_at"
-          ],
+          "columns": ["status", "completed_at"],
           "isUnique": false
         },
         "fetch_runs_started_idx": {
           "name": "fetch_runs_started_idx",
-          "columns": [
-            "started_at"
-          ],
+          "columns": ["started_at"],
           "isUnique": false
         }
       },
@@ -337,31 +332,22 @@
       "indexes": {
         "model_results_run_model_unique": {
           "name": "model_results_run_model_unique",
-          "columns": [
-            "run_id",
-            "model_key"
-          ],
+          "columns": ["run_id", "model_key"],
           "isUnique": true
         },
         "model_results_run_idx": {
           "name": "model_results_run_idx",
-          "columns": [
-            "run_id"
-          ],
+          "columns": ["run_id"],
           "isUnique": false
         },
         "model_results_model_idx": {
           "name": "model_results_model_idx",
-          "columns": [
-            "model_key"
-          ],
+          "columns": ["model_key"],
           "isUnique": false
         },
         "model_results_name_idx": {
           "name": "model_results_name_idx",
-          "columns": [
-            "name"
-          ],
+          "columns": ["name"],
           "isUnique": false
         }
       },
@@ -370,12 +356,8 @@
           "name": "model_results_run_id_fetch_runs_id_fk",
           "tableFrom": "model_results",
           "tableTo": "fetch_runs",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -422,22 +404,15 @@
           "name": "raw_html_chunks_run_id_fetch_runs_id_fk",
           "tableFrom": "raw_html_chunks",
           "tableTo": "fetch_runs",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "raw_html_chunks_run_id_chunk_index_pk": {
-          "columns": [
-            "run_id",
-            "chunk_index"
-          ],
+          "columns": ["run_id", "chunk_index"],
           "name": "raw_html_chunks_run_id_chunk_index_pk"
         }
       },

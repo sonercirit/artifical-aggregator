@@ -26,9 +26,7 @@ export const fetchRuns = sqliteTable(
     htmlBytes: integer("html_bytes"),
     htmlSha256: text("html_sha256"),
     htmlGzipBytes: integer("html_gzip_bytes"),
-    rawHtmlEncoding: text("raw_html_encoding")
-      .notNull()
-      .default("gzip-base64-chunks"),
+    rawHtmlEncoding: text("raw_html_encoding").notNull().default("gzip-base64-chunks"),
     parserVersion: text("parser_version").notNull(),
     modelCount: integer("model_count").notNull().default(0),
     resultCount: integer("result_count").notNull().default(0),
@@ -94,10 +92,7 @@ export const modelResults = sqliteTable(
       .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   },
   (table) => ({
-    runModelUnique: uniqueIndex("model_results_run_model_unique").on(
-      table.runId,
-      table.modelKey,
-    ),
+    runModelUnique: uniqueIndex("model_results_run_model_unique").on(table.runId, table.modelKey),
     runIdx: index("model_results_run_idx").on(table.runId),
     modelIdx: index("model_results_model_idx").on(table.modelKey),
     nameIdx: index("model_results_name_idx").on(table.name),

@@ -1,13 +1,7 @@
 export const ARTIFICIAL_ANALYSIS_URL = "https://artificialanalysis.ai/models";
 export const PARSER_VERSION = "aa-next-rsc-v1";
 
-export const MODES = [
-  "combined",
-  "coding",
-  "intelligence",
-  "agentic",
-  "mmmu",
-] as const;
+export const MODES = ["combined", "coding", "intelligence", "agentic", "mmmu"] as const;
 export type Mode = (typeof MODES)[number];
 
 export const CALCS = ["raw", "sub", "div"] as const;
@@ -94,13 +88,15 @@ export type ScoreResult<T extends ParsedModelResult = ParsedModelResult> = {
 };
 
 export function parseHtmlToResults(html: string): ParsedModelResult[] {
-  return extractModelsFromHtml(html).map(normalizeModel).filter((model) => {
-    return model.modelKey.length > 0 && model.name.length > 0;
-  });
+  return extractModelsFromHtml(html)
+    .map(normalizeModel)
+    .filter((model) => {
+      return model.modelKey.length > 0 && model.name.length > 0;
+    });
 }
 
 export function extractModelsFromHtml(html: string): unknown[] {
-  const escapedMarkers = ["\\\",\\\"models\\\":[{", "\\\"models\\\":[{"];
+  const escapedMarkers = ['\\",\\"models\\":[{', '\\"models\\":[{'];
 
   for (const marker of escapedMarkers) {
     const position = html.indexOf(marker);
@@ -108,11 +104,8 @@ export function extractModelsFromHtml(html: string): unknown[] {
 
     // The first marker includes the escaped leading `","`; skip it so the
     // decoded text starts at `"models":[` just like the original CLI did.
-    const start = marker.startsWith("\\\",") ? position + 4 : position;
-    const clean = html
-      .slice(start)
-      .replaceAll('\\"', '"')
-      .replaceAll("\\\\", "\\");
+    const start = marker.startsWith('\\",') ? position + 4 : position;
+    const clean = html.slice(start).replaceAll('\\"', '"').replaceAll("\\\\", "\\");
 
     return parseModelsArrayFromCleanPayload(clean);
   }
@@ -143,11 +136,7 @@ export function parseScoreOptions(params: URLSearchParams): ScoreOptions {
       numberParam(params, ["costFloor", "cost-floor"], DEFAULT_SCORE_OPTIONS.costFloor),
       0.000001,
     ),
-    costPower: numberParam(
-      params,
-      ["costPower", "cost-power"],
-      DEFAULT_SCORE_OPTIONS.costPower,
-    ),
+    costPower: numberParam(params, ["costPower", "cost-power"], DEFAULT_SCORE_OPTIONS.costPower),
     limit: limitParam(params),
   };
 }
@@ -175,9 +164,7 @@ export function scoreRows<T extends ParsedModelResult>(
     return { rows: [], topQualityModel: null, effectiveSortBy: options.sort };
   }
 
-  const topQualityModel = modeRows.reduce((best, row) =>
-    row.quality > best.quality ? row : best,
-  );
+  const topQualityModel = modeRows.reduce((best, row) => (row.quality > best.quality ? row : best));
 
   for (const row of modeRows) {
     const safeCost = Math.max(row.totalCost ?? 0, options.costFloor);
@@ -236,18 +223,13 @@ export function scoreRows<T extends ParsedModelResult>(
       return direction * String(av).localeCompare(String(bv));
     }
 
-    return ascendingSorts.has(effectiveSortBy)
-      ? Number(av) - Number(bv)
-      : Number(bv) - Number(av);
+    return ascendingSorts.has(effectiveSortBy) ? Number(av) - Number(bv) : Number(bv) - Number(av);
   });
 
   return { rows, topQualityModel, effectiveSortBy };
 }
 
-export function qualityFor(
-  result: ParsedModelResult,
-  mode: Mode,
-): number | null {
+export function qualityFor(result: ParsedModelResult, mode: Mode): number | null {
   if (mode === "intelligence") return numberOrNull(result.intelligence);
   if (mode === "coding") return numberOrNull(result.coding);
   if (mode === "agentic") return numberOrNull(result.agentic);
@@ -256,9 +238,7 @@ export function qualityFor(
     return mmmu == null ? null : mmmu * 100;
   }
 
-  const parts = [result.intelligence, result.coding]
-    .map(numberOrNull)
-    .filter(isNotNull);
+  const parts = [result.intelligence, result.coding].map(numberOrNull).filter(isNotNull);
   const agentic = numberOrNull(result.agentic);
   if (agentic != null) parts.push(agentic);
 

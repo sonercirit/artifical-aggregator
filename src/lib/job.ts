@@ -1,7 +1,4 @@
-import {
-  ARTIFICIAL_ANALYSIS_URL,
-  parseHtmlToResults,
-} from "./aa";
+import { ARTIFICIAL_ANALYSIS_URL, parseHtmlToResults } from "./aa";
 import {
   completeFetchRun,
   createFetchRun,
@@ -49,8 +46,7 @@ export async function runFetchJob(
     const response = await fetch(sourceUrl, {
       headers: {
         accept: "text/html,application/xhtml+xml",
-        "user-agent":
-          "artificial-aggrerator/0.1 (+https://workers.cloudflare.com/)",
+        "user-agent": "artificial-aggrerator/0.1 (+https://workers.cloudflare.com/)",
       },
       redirect: "follow",
     });

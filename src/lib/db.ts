@@ -87,10 +87,7 @@ export async function getActiveRun(env: Bindings): Promise<FetchRun | null> {
     .first<FetchRun>();
 }
 
-export async function createFetchRun(
-  env: Bindings,
-  sourceUrl: string,
-): Promise<number> {
+export async function createFetchRun(env: Bindings, sourceUrl: string): Promise<number> {
   const result = await env.DB.prepare(
     `INSERT INTO fetch_runs (source_url, status, parser_version)
      VALUES (?, 'running', ?)`,
@@ -180,9 +177,7 @@ export async function storeRawHtmlChunks(
   runId: number,
   chunks: string[],
 ): Promise<void> {
-  await env.DB.prepare("DELETE FROM raw_html_chunks WHERE run_id = ?")
-    .bind(runId)
-    .run();
+  await env.DB.prepare("DELETE FROM raw_html_chunks WHERE run_id = ?").bind(runId).run();
 
   const statements = chunks.map((chunk, index) =>
     env.DB.prepare(
@@ -199,9 +194,7 @@ export async function storeModelResults(
   runId: number,
   results: ParsedModelResult[],
 ): Promise<void> {
-  await env.DB.prepare("DELETE FROM model_results WHERE run_id = ?")
-    .bind(runId)
-    .run();
+  await env.DB.prepare("DELETE FROM model_results WHERE run_id = ?").bind(runId).run();
 
   const statements = results.map((result) =>
     env.DB.prepare(
@@ -272,9 +265,7 @@ export async function storeModelResults(
   await batchStatements(env, statements, 40);
 }
 
-export async function getLatestSuccessfulRun(
-  env: Bindings,
-): Promise<FetchRun | null> {
+export async function getLatestSuccessfulRun(env: Bindings): Promise<FetchRun | null> {
   return env.DB.prepare(
     `SELECT * FROM fetch_runs
      WHERE status = 'success'
@@ -283,19 +274,11 @@ export async function getLatestSuccessfulRun(
   ).first<FetchRun>();
 }
 
-export async function getRun(
-  env: Bindings,
-  runId: number,
-): Promise<FetchRun | null> {
-  return env.DB.prepare("SELECT * FROM fetch_runs WHERE id = ?")
-    .bind(runId)
-    .first<FetchRun>();
+export async function getRun(env: Bindings, runId: number): Promise<FetchRun | null> {
+  return env.DB.prepare("SELECT * FROM fetch_runs WHERE id = ?").bind(runId).first<FetchRun>();
 }
 
-export async function getRuns(
-  env: Bindings,
-  limit = 100,
-): Promise<FetchRun[]> {
+export async function getRuns(env: Bindings, limit = 100): Promise<FetchRun[]> {
   const { results = [] } = await env.DB.prepare(
     `SELECT * FROM fetch_runs
      ORDER BY started_at DESC, id DESC
@@ -306,10 +289,7 @@ export async function getRuns(
   return results;
 }
 
-export async function getResultsForRun(
-  env: Bindings,
-  runId: number,
-): Promise<ParsedModelResult[]> {
+export async function getResultsForRun(env: Bindings, runId: number): Promise<ParsedModelResult[]> {
   const { results = [] } = await env.DB.prepare(
     `SELECT * FROM model_results
      WHERE run_id = ?
@@ -372,9 +352,7 @@ export async function getResultsForSuccessfulRuns(
   return results.map(rowToTimelineResult);
 }
 
-export async function getModelSummaries(
-  env: Bindings,
-): Promise<ModelSummary[]> {
+export async function getModelSummaries(env: Bindings): Promise<ModelSummary[]> {
   const { results = [] } = await env.DB.prepare(
     `SELECT
         mr.model_key,
@@ -391,10 +369,7 @@ export async function getModelSummaries(
   return results;
 }
 
-export async function getRawHtmlBase64Chunks(
-  env: Bindings,
-  runId: number,
-): Promise<string[]> {
+export async function getRawHtmlBase64Chunks(env: Bindings, runId: number): Promise<string[]> {
   const { results = [] } = await env.DB.prepare(
     `SELECT data FROM raw_html_chunks
      WHERE run_id = ?

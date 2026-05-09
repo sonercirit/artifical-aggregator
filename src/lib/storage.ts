@@ -2,9 +2,7 @@ const textEncoder = new TextEncoder();
 
 export async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", textEncoder.encode(value));
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export async function gzipStringToBase64Chunks(
@@ -35,9 +33,7 @@ export async function gzipStringToBase64Chunks(
   };
 }
 
-export async function gunzipBase64ChunksToString(
-  chunks: string[],
-): Promise<string> {
+export async function gunzipBase64ChunksToString(chunks: string[]): Promise<string> {
   const compressed = base64ToBytes(chunks.join(""));
   const stream = new Response(toArrayBuffer(compressed)).body?.pipeThrough(
     new DecompressionStream("gzip"),
