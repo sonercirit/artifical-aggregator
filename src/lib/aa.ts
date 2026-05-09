@@ -35,7 +35,7 @@ export type ScoreOptions = {
 
 export const DEFAULT_SCORE_OPTIONS: ScoreOptions = {
   mode: "combined",
-  calc: "sub",
+  calc: "raw",
   costWeight: 10,
   costFloor: 1,
   costPower: 1,
