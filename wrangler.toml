@@ -1,4 +1,4 @@
-name = "artificial-aggrerator"
+name = "artificial-aggregator"
 main = "src/index.ts"
 compatibility_date = "2025-04-01"
 routes = [
@@ -24,6 +24,6 @@ persist = true
 
 [[d1_databases]]
 binding = "DB"
-database_name = "artificial-aggrerator"
+database_name = "artificial-aggregator"
 database_id = "fcac17ee-2834-418e-8c6f-9db9cd62089d"
 migrations_dir = "drizzle"

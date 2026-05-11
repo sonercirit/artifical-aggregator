@@ -1,5 +1,5 @@
 {
-  "name": "artificial-aggrerator",
+  "name": "artificial-aggregator",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,9 +8,9 @@
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:apply:local": "wrangler d1 migrations apply artificial-aggrerator --local",
-    "db:apply:remote": "wrangler d1 migrations apply artificial-aggrerator --remote",
-    "cf:d1:create": "wrangler d1 create artificial-aggrerator",
+    "db:apply:local": "wrangler d1 migrations apply artificial-aggregator --local",
+    "db:apply:remote": "wrangler d1 migrations apply artificial-aggregator --remote",
+    "cf:d1:create": "wrangler d1 create artificial-aggregator",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

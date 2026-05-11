@@ -46,7 +46,7 @@ export async function runFetchJob(
     const response = await fetch(sourceUrl, {
       headers: {
         accept: "text/html,application/xhtml+xml",
-        "user-agent": "artificial-aggrerator/0.1 (+https://workers.cloudflare.com/)",
+        "user-agent": "artificial-aggregator/0.1 (+https://workers.cloudflare.com/)",
       },
       redirect: "follow",
     });

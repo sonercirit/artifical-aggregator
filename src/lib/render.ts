@@ -51,14 +51,14 @@ export function layout(title: string, body: string): string {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${escapeHtml(title)} · Artificial Aggrerator</title>
+  <title>${escapeHtml(title)} · Artificial Aggregator</title>
   ${renderThemeInitScript()}
   <style>${CSS}</style>
 </head>
 <body>
   <header>
     <nav>
-      <a class="brand" href="/">Artificial Aggrerator</a>
+      <a class="brand" href="/">Artificial Aggregator</a>
       <a href="/runs">Runs</a>
       <a href="/history">Model timelines</a>
       <a href="/api/runs">API</a>
