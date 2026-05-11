@@ -1,4 +1,6 @@
-# Artificial Aggrerator
+# Artificial Aggregator
+
+Live at https://artificialaggregator.com/.
 
 Cloudflare Worker web app for comparing Artificial Analysis model scores against benchmark costs.
 
