@@ -12,6 +12,16 @@ crons = ["0 * * * *"]
 [vars]
 AA_SOURCE_URL = "https://artificialanalysis.ai/models"
 
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "artificial-aggrerator"
