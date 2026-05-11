@@ -136,7 +136,7 @@ app.get("/history", async (c) => {
 
 app.get("/models/:modelKey", async (c) => {
   const modelKey = c.req.param("modelKey");
-  const options = parseScoreOptions(new URL(c.req.url).searchParams);
+  const options = { ...parseScoreOptions(new URL(c.req.url).searchParams), frontierOnly: false };
   const timeline = await getTimelineForModel(c.env, modelKey, 2000);
   const scored = scoreRows(timeline, { ...options, sort: "score", limit: 2000 }).rows.sort((a, b) =>
     String(a.runCompletedAt ?? a.runStartedAt).localeCompare(
@@ -184,7 +184,7 @@ app.get("/api/winners", async (c) => {
 
 app.get("/api/models/:modelKey/timeline", async (c) => {
   const modelKey = c.req.param("modelKey");
-  const options = parseScoreOptions(new URL(c.req.url).searchParams);
+  const options = { ...parseScoreOptions(new URL(c.req.url).searchParams), frontierOnly: false };
   const timeline = await getTimelineForModel(c.env, modelKey, 2000);
   const scored = scoreRows(timeline, { ...options, sort: "score", limit: 2000 }).rows.sort((a, b) =>
     String(a.runCompletedAt ?? a.runStartedAt).localeCompare(

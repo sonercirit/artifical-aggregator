@@ -30,6 +30,7 @@ export type ScoreOptions = {
   costFloor: number;
   costPower: number;
   sort: SortKey;
+  frontierOnly: boolean;
   limit: number;
 };
 
@@ -40,6 +41,7 @@ export const DEFAULT_SCORE_OPTIONS: ScoreOptions = {
   costFloor: 1,
   costPower: 1,
   sort: "score",
+  frontierOnly: true,
   limit: 100,
 };
 
@@ -137,6 +139,11 @@ export function parseScoreOptions(params: URLSearchParams): ScoreOptions {
       0.000001,
     ),
     costPower: numberParam(params, ["costPower", "cost-power"], DEFAULT_SCORE_OPTIONS.costPower),
+    frontierOnly: booleanParam(
+      params,
+      ["frontier", "frontierOnly", "frontier-only", "pareto", "paretoOnly", "pareto-only"],
+      DEFAULT_SCORE_OPTIONS.frontierOnly,
+    ),
     limit: limitParam(params),
   };
 }
@@ -210,7 +217,9 @@ export function scoreRows<T extends ParsedModelResult>(
   const ascendingSorts = new Set<SortKey>(["cost", "cqp", "name"]);
   const stringSorts = new Set<SortKey>(["released", "cutoff", "name"]);
 
-  const rows = [...modeRows].sort((a, b) => {
+  const sortableRows = options.frontierOnly ? modeRows.filter((row) => row.frontier) : modeRows;
+
+  const rows = [...sortableRows].sort((a, b) => {
     const av = sortFn(a);
     const bv = sortFn(b);
 
@@ -251,6 +260,7 @@ export function scoreOptionsToSearchParams(options: ScoreOptions): URLSearchPara
   params.set("mode", options.mode);
   params.set("calc", options.calc);
   params.set("sort", options.sort);
+  params.set("frontier", options.frontierOnly ? "1" : "0");
   params.set("costWeight", String(options.costWeight));
   params.set("costFloor", String(options.costFloor));
   params.set("costPower", String(options.costPower));
@@ -383,6 +393,28 @@ function numberParam(
 
     const value = Number(raw);
     if (Number.isFinite(value)) return value;
+  }
+
+  return fallback;
+}
+
+function booleanParam(
+  params: URLSearchParams,
+  keyOrKeys: string | string[],
+  fallback: boolean,
+): boolean {
+  const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
+
+  for (const key of keys) {
+    if (!params.has(key)) continue;
+
+    const value = (params.get(key) ?? "").trim().toLowerCase();
+    if (["", "1", "true", "yes", "on", "only", "frontier", "pareto"].includes(value)) {
+      return true;
+    }
+    if (["0", "false", "no", "off", "all", "none"].includes(value)) {
+      return false;
+    }
   }
 
   return fallback;

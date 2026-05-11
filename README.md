@@ -49,7 +49,7 @@ The cron in `wrangler.toml` runs at minute `0` every hour.
 
 ## Useful routes
 
-- `/` latest comparison table with mode/cost scoring controls, tooltips, and 20 persisted UI themes
+- `/` latest comparison table with mode/cost scoring controls, Pareto-frontier filter, tooltips, and 20 persisted UI themes
 - `/runs` all fetch executions
 - `/runs/:id` one execution
 - `/runs/:id/raw` exact raw HTML for that execution (decompressed from D1 chunks)

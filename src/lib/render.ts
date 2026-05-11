@@ -33,6 +33,8 @@ const HELP = {
   mode: "The quality dimension used for ranking: combined averages AA intelligence, coding, and agentic scores when available.",
   calc: "How the final score is computed: raw ignores cost, sub subtracts a logarithmic cost penalty, and div divides quality by cost^power.",
   sort: "Column used to rank the comparison table and historic #1 winner timeline.",
+  frontier:
+    "Show only models on the Pareto frontier for the selected quality mode: no cheaper model has a higher selected quality score.",
   costWeight:
     "For sub scoring, quality points subtracted for each 10x increase above the cost floor.",
   costFloor:
@@ -395,6 +397,7 @@ function renderScoreForm(
     ${selectControl("mode", "Mode", MODES, options.mode, HELP.mode)}
     ${selectControl("calc", "Calc", CALCS, options.calc, HELP.calc)}
     ${selectControl("sort", "Sort", SORT_KEYS, options.sort, HELP.sort)}
+    ${frontierFilterControl(options)}
     <label>${labelWithTip("Cost weight", HELP.costWeight)}<input type="number" step="0.1" name="costWeight" value="${escapeAttr(options.costWeight)}" /></label>
     <label>${labelWithTip("Cost floor", HELP.costFloor)}<input type="number" step="0.000001" name="costFloor" value="${escapeAttr(options.costFloor)}" /></label>
     <label>${labelWithTip("Cost power", HELP.costPower)}<input type="number" step="0.1" name="costPower" value="${escapeAttr(options.costPower)}" /></label>
@@ -652,6 +655,15 @@ function renderLineChart(input: {
       <g style="fill:${color}">${circles}</g>
     </svg>
   </article>`;
+}
+
+function frontierFilterControl(options: ScoreOptions): string {
+  return `<label>${labelWithTip("Pareto", HELP.frontier)}
+    <select name="frontier">
+      <option value="0" ${options.frontierOnly ? "" : "selected"}>All models</option>
+      <option value="1" ${options.frontierOnly ? "selected" : ""}>Frontier only</option>
+    </select>
+  </label>`;
 }
 
 function selectControl<T extends readonly string[]>(
