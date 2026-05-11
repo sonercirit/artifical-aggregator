@@ -18,7 +18,6 @@ export const SORT_KEYS = [
   "agentic",
   "mmmu",
   "released",
-  "cutoff",
   "name",
 ] as const;
 export type SortKey = (typeof SORT_KEYS)[number];
@@ -208,14 +207,13 @@ export function scoreRows<T extends ParsedModelResult>(
     agentic: (row) => row.agentic,
     mmmu: (row) => (row.mmmu == null ? null : row.mmmu * 100),
     released: (row) => row.releaseDate,
-    cutoff: (row) => row.cutoffDate,
     name: (row) => row.name,
   };
 
   const effectiveSortBy = sortFns[options.sort] ? options.sort : "score";
   const sortFn = sortFns[effectiveSortBy];
   const ascendingSorts = new Set<SortKey>(["cost", "cqp", "name"]);
-  const stringSorts = new Set<SortKey>(["released", "cutoff", "name"]);
+  const stringSorts = new Set<SortKey>(["released", "name"]);
 
   const sortableRows = options.frontierOnly ? modeRows.filter((row) => row.frontier) : modeRows;
 

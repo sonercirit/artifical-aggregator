@@ -382,8 +382,7 @@ function renderScoreForm(
   runs: FetchRun[],
   selectedRunId: number | null,
 ): string {
-  return `<form class="controls" method="get" action="/">
-    <label>${labelWithTip("Run", HELP.run)}
+  const runControl = `<label>${labelWithTip("Run", HELP.run)}
       <select name="run">
         <option value="">Latest successful</option>
         ${runs
@@ -393,28 +392,53 @@ function renderScoreForm(
           )
           .join("")}
       </select>
-    </label>
-    ${selectControl("mode", "Mode", MODES, options.mode, HELP.mode)}
-    ${selectControl("calc", "Calc", CALCS, options.calc, HELP.calc)}
-    ${selectControl("sort", "Sort", SORT_KEYS, options.sort, HELP.sort)}
-    ${frontierFilterControl(options)}
-    <label>${labelWithTip("Cost weight", HELP.costWeight)}<input type="number" step="0.1" name="costWeight" value="${escapeAttr(options.costWeight)}" /></label>
-    <label>${labelWithTip("Cost floor", HELP.costFloor)}<input type="number" step="0.000001" name="costFloor" value="${escapeAttr(options.costFloor)}" /></label>
-    <label>${labelWithTip("Cost power", HELP.costPower)}<input type="number" step="0.1" name="costPower" value="${escapeAttr(options.costPower)}" /></label>
-    <label>${labelWithTip("Limit", HELP.limit)}<input type="number" min="1" max="10000" name="limit" value="${escapeAttr(options.limit)}" /></label>
-    <button type="submit">Update</button>
+    </label>`;
+
+  return `<form class="controls controls-categorized" method="get" action="/">
+    ${controlGroup("Snapshot", "Pick the stored fetch snapshot to compare.", runControl)}
+    ${controlGroup(
+      "Scoring",
+      "Choose the quality benchmark and final score formula.",
+      `${selectControl("mode", "Mode", MODES, options.mode, HELP.mode)}${selectControl("calc", "Calc", CALCS, options.calc, HELP.calc)}`,
+    )}
+    ${controlGroup("Cost adjustment", "Tune formulas that account for benchmark cost.", costControls(options))}
+    ${controlGroup(
+      "Result set",
+      "Control table filtering, ordering, and row count.",
+      `${selectControl("sort", "Sort", SORT_KEYS, options.sort, HELP.sort)}${frontierFilterControl(options)}${limitControl(options)}`,
+    )}
+    <div class="controls-actions"><button type="submit">Update</button></div>
   </form>`;
 }
 
 function renderTimelineForm(options: ScoreOptions): string {
-  return `<form class="controls compact" method="get">
-    ${selectControl("mode", "Mode", MODES, options.mode, HELP.mode)}
-    ${selectControl("calc", "Calc", CALCS, options.calc, HELP.calc)}
-    <label>${labelWithTip("Cost weight", HELP.costWeight)}<input type="number" step="0.1" name="costWeight" value="${escapeAttr(options.costWeight)}" /></label>
-    <label>${labelWithTip("Cost floor", HELP.costFloor)}<input type="number" step="0.000001" name="costFloor" value="${escapeAttr(options.costFloor)}" /></label>
-    <label>${labelWithTip("Cost power", HELP.costPower)}<input type="number" step="0.1" name="costPower" value="${escapeAttr(options.costPower)}" /></label>
-    <button type="submit">Update</button>
+  return `<form class="controls controls-categorized compact" method="get">
+    ${controlGroup(
+      "Scoring",
+      "Choose the quality benchmark and final score formula for this model.",
+      `${selectControl("mode", "Mode", MODES, options.mode, HELP.mode)}${selectControl("calc", "Calc", CALCS, options.calc, HELP.calc)}`,
+    )}
+    ${controlGroup("Cost adjustment", "Tune formulas that account for benchmark cost.", costControls(options))}
+    <div class="controls-actions"><button type="submit">Update</button></div>
   </form>`;
+}
+
+function controlGroup(title: string, description: string, body: string): string {
+  return `<fieldset class="control-group">
+    <legend>${escapeHtml(title)}</legend>
+    <p class="control-group-description">${escapeHtml(description)}</p>
+    <div class="control-group-grid">${body}</div>
+  </fieldset>`;
+}
+
+function costControls(options: ScoreOptions): string {
+  return `<label>${labelWithTip("Cost weight", HELP.costWeight)}<input type="number" step="0.1" name="costWeight" value="${escapeAttr(options.costWeight)}" /></label>
+    <label>${labelWithTip("Cost floor", HELP.costFloor)}<input type="number" step="0.000001" name="costFloor" value="${escapeAttr(options.costFloor)}" /></label>
+    <label>${labelWithTip("Cost power", HELP.costPower)}<input type="number" step="0.1" name="costPower" value="${escapeAttr(options.costPower)}" /></label>`;
+}
+
+function limitControl(options: ScoreOptions): string {
+  return `<label>${labelWithTip("Limit", HELP.limit)}<input type="number" min="1" max="10000" name="limit" value="${escapeAttr(options.limit)}" /></label>`;
 }
 
 function renderWinnerTimeline(
@@ -552,7 +576,6 @@ function renderScoresTable(rows: ScoredRow[], options: ScoreOptions): string {
         <td class="center">${row.frontier ? '<span title="Pareto frontier">✓</span>' : ""}</td>
         <td>${link(timelineUrl, row.name)}<br><small>${escapeHtml(row.creatorName ?? "")}</small></td>
         <td>${escapeHtml(row.releaseDate ?? "-")}</td>
-        <td>${escapeHtml(row.cutoffDate ?? "-")}</td>
         <td class="num">${formatMoney(row.totalCost)}</td>
         <td class="num">${fmt(row.costPerQuality, 2)}</td>
         <td class="num">${fmt(row.quality, 1)}</td>
@@ -572,7 +595,6 @@ function renderScoresTable(rows: ScoredRow[], options: ScoreOptions): string {
       <col class="pareto-col">
       <col class="model-col">
       <col class="released-col">
-      <col class="cutoff-col">
       <col class="cost-col">
       <col class="cost-quality-col">
       <col class="quality-col">
@@ -583,8 +605,8 @@ function renderScoresTable(rows: ScoredRow[], options: ScoreOptions): string {
       <col class="penalty-col">
       <col class="score-col">
     </colgroup>
-    <thead><tr>${thTip("#", "Rank after applying the selected sort.", "num")}${thTip("Pareto", "On the Pareto frontier: no cheaper model has a higher selected quality score.", "center")}${thTip("Model", "Model name. Click to open its historic timeline.")}${thTip("Released", "Model release date reported by Artificial Analysis.")}${thTip("Cutoff", "Knowledge cutoff date reported by Artificial Analysis.")}${thTip("Cost$", "AA intelligence-index benchmark cost in dollars. Lower is cheaper.", "num")}${thTip("$/Q", "Dollars per selected quality point. Lower is better.", "num")}${thTip("Qual", "Selected quality metric before cost adjustment.", "num")}${thTip("ΔTop", "Quality gap versus the top-quality model in this run.", "num")}${thTip("Intel", "Artificial Analysis intelligence index.", "num")}${thTip("Code", "Artificial Analysis coding index.", "num")}${thTip("Agent", "Artificial Analysis agentic index when available.", "num")}${thTip("Pen", "Cost penalty subtracted in sub scoring. Zero for raw/div scoring display still shows the computed penalty.", "num")}${thTip("Score", "Final calculated score for the selected mode and cost formula.", "num")}</tr></thead>
-    <tbody>${tableRows || `<tr><td colspan="14" class="empty">No scored rows for these options.</td></tr>`}</tbody>
+    <thead><tr>${thTip("#", "Rank after applying the selected sort.", "num")}${thTip("Pareto", "On the Pareto frontier: no cheaper model has a higher selected quality score.", "center")}${thTip("Model", "Model name. Click to open its historic timeline.")}${thTip("Released", "Model release date reported by Artificial Analysis.")}${thTip("Cost$", "AA intelligence-index benchmark cost in dollars. Lower is cheaper.", "num")}${thTip("$/Q", "Dollars per selected quality point. Lower is better.", "num")}${thTip("Qual", "Selected quality metric before cost adjustment.", "num")}${thTip("ΔTop", "Quality gap versus the top-quality model in this run.", "num")}${thTip("Intel", "Artificial Analysis intelligence index.", "num")}${thTip("Code", "Artificial Analysis coding index.", "num")}${thTip("Agent", "Artificial Analysis agentic index when available.", "num")}${thTip("Pen", "Cost penalty subtracted in sub scoring. Zero for raw/div scoring display still shows the computed penalty.", "num")}${thTip("Score", "Final calculated score for the selected mode and cost formula.", "num")}</tr></thead>
+    <tbody>${tableRows || `<tr><td colspan="13" class="empty">No scored rows for these options.</td></tr>`}</tbody>
   </table></div>`;
 }
 
@@ -796,6 +818,14 @@ h2 { margin: 0 0 12px; }
 .danger { border-color: rgba(239,68,68,.4); color: #fecaca; }
 .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; padding: 16px; margin: 18px 0 24px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
 .controls.compact { grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); }
+.controls.controls-categorized { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; align-items: stretch; }
+.control-group { min-width: 0; min-inline-size: 0; margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-2); }
+.control-group legend { padding: 0 6px; color: var(--text); font-weight: 800; }
+.control-group-description { margin: 2px 0 12px; color: var(--muted); font-size: .82rem; line-height: 1.35; }
+.control-group-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 12px; }
+.control-group select, .control-group input { background: var(--panel); }
+.controls-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; }
+.controls-actions button { width: min(220px, 100%); }
 label { display: grid; gap: 6px; color: var(--muted); font-size: .9rem; }
 .label-row, .heading-row, .th-label { display: inline-flex; gap: .35rem; align-items: center; min-width: 0; }
 .th-label { white-space: nowrap; }
@@ -823,7 +853,7 @@ th.center .th-label { justify-content: center; width: 100%; }
 .score-table .pareto-col { width: 6.5%; }
 .score-table .model-col { width: 17.5%; }
 .score-table .released-col { width: 9.5%; }
-.score-table .cutoff-col, .score-table .cost-quality-col, .score-table .quality-col, .score-table .delta-col, .score-table .score-col { width: 6.5%; }
+.score-table .cost-quality-col, .score-table .quality-col, .score-table .delta-col, .score-table .score-col { width: 6.5%; }
 .score-table .cost-col { width: 7%; }
 .score-table .metric-col { width: 6%; }
 .score-table .penalty-col { width: 5.5%; }
