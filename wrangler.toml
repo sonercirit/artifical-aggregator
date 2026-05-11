@@ -1,6 +1,10 @@
 name = "artificial-aggrerator"
 main = "src/index.ts"
 compatibility_date = "2025-04-01"
+routes = [
+  { pattern = "artificialaggregator.com", custom_domain = true },
+  { pattern = "www.artificialaggregator.com", custom_domain = true },
+]
 
 [triggers]
 crons = ["0 * * * *"]
@@ -11,5 +15,5 @@ AA_SOURCE_URL = "https://artificialanalysis.ai/models"
 [[d1_databases]]
 binding = "DB"
 database_name = "artificial-aggrerator"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "fcac17ee-2834-418e-8c6f-9db9cd62089d"
 migrations_dir = "drizzle"

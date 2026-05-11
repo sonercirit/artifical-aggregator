@@ -26,6 +26,16 @@ import type { Bindings } from "./types";
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+app.use("*", async (c, next) => {
+  const url = new URL(c.req.url);
+  if (url.hostname === "www.artificialaggregator.com") {
+    url.hostname = "artificialaggregator.com";
+    return c.redirect(url.toString(), 301);
+  }
+
+  await next();
+});
+
 app.get("/", async (c) => {
   const url = new URL(c.req.url);
   const options = parseScoreOptions(url.searchParams);
