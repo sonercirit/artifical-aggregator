@@ -66,6 +66,7 @@ export function layout(title: string, body: string): string {
     </nav>
   </header>
   <main>${body}</main>
+  <footer class="site-footer">created by <a href="https://sonercir.it" target="_blank" rel="noopener noreferrer">sonercir.it</a></footer>
   ${renderThemeControlScript()}
   ${renderTooltipScript()}
 </body>
@@ -809,7 +810,9 @@ nav { max-width: 1280px; margin: 0 auto; padding: 14px 20px; display: flex; gap:
 .theme-picker { margin-left: auto; min-width: 170px; max-width: 220px; }
 .theme-picker span { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; }
 .theme-picker select { padding: 7px 9px; }
-main { max-width: 1280px; margin: 0 auto; padding: 24px 20px 64px; }
+main { max-width: 1280px; margin: 0 auto; padding: 24px 20px 96px; }
+.site-footer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; padding: 10px 20px; border-top: 1px solid var(--line); background: var(--header-bg); backdrop-filter: blur(10px); color: var(--muted); text-align: center; font-size: .85rem; }
+.site-footer a { font-weight: 700; }
 h1 { font-size: clamp(2rem, 5vw, 4rem); line-height: 1; margin: 0 0 12px; letter-spacing: -0.04em; }
 h2 { margin: 0 0 12px; }
 .hero { margin-bottom: 24px; }
