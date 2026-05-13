@@ -75,6 +75,39 @@ export type CompleteRunInput = {
   resultCount: number;
 };
 
+export type RunProgressInput = {
+  httpStatus?: number | null;
+  htmlBytes?: number | null;
+  htmlSha256?: string | null;
+  htmlGzipBytes?: number | null;
+  modelCount?: number | null;
+  resultCount?: number | null;
+};
+
+export async function markStaleRunningRuns(
+  env: Bindings,
+  olderThanMs = 20 * 60 * 1000,
+): Promise<number> {
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - olderThanMs).toISOString();
+  const nowIso = now.toISOString();
+  const result = await env.DB.prepare(
+    `UPDATE fetch_runs
+     SET status = 'error',
+         completed_at = ?,
+         duration_ms = COALESCE(duration_ms, ?),
+         error = 'Worker was canceled or timed out before it could record a failure. raw_chunks=' ||
+           (SELECT COUNT(*) FROM raw_html_chunks WHERE raw_html_chunks.run_id = fetch_runs.id) ||
+           ', model_rows=' ||
+           (SELECT COUNT(*) FROM model_results WHERE model_results.run_id = fetch_runs.id)
+     WHERE status = 'running' AND started_at < ?`,
+  )
+    .bind(nowIso, olderThanMs, cutoff)
+    .run();
+
+  return Number(result.meta.changes ?? 0);
+}
+
 export async function getActiveRun(env: Bindings): Promise<FetchRun | null> {
   const cutoff = new Date(Date.now() - 55 * 60 * 1000).toISOString();
   return env.DB.prepare(
@@ -100,6 +133,33 @@ export async function createFetchRun(env: Bindings, sourceUrl: string): Promise<
     throw new Error("D1 did not return a fetch run id");
   }
   return id;
+}
+
+export async function updateFetchRunProgress(
+  env: Bindings,
+  runId: number,
+  input: RunProgressInput,
+): Promise<void> {
+  await env.DB.prepare(
+    `UPDATE fetch_runs
+     SET http_status = COALESCE(?, http_status),
+         html_bytes = COALESCE(?, html_bytes),
+         html_sha256 = COALESCE(?, html_sha256),
+         html_gzip_bytes = COALESCE(?, html_gzip_bytes),
+         model_count = COALESCE(?, model_count),
+         result_count = COALESCE(?, result_count)
+     WHERE id = ?`,
+  )
+    .bind(
+      input.httpStatus ?? null,
+      input.htmlBytes ?? null,
+      input.htmlSha256 ?? null,
+      input.htmlGzipBytes ?? null,
+      input.modelCount ?? null,
+      input.resultCount ?? null,
+      runId,
+    )
+    .run();
 }
 
 export async function completeFetchRun(
@@ -262,7 +322,7 @@ export async function storeModelResults(
     ),
   );
 
-  await batchStatements(env, statements, 40);
+  await batchStatements(env, statements, 80);
 }
 
 export async function getLatestSuccessfulRun(env: Bindings): Promise<FetchRun | null> {
