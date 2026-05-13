@@ -307,7 +307,7 @@ function renderThemeControlScript(): string {
 function renderTooltipScript(): string {
   return `<script>
 (() => {
-  const triggers = Array.from(document.querySelectorAll(".tooltip[data-tip]"));
+  const triggers = Array.from(document.querySelectorAll(".tooltip[data-tip], .chart-entry[data-tip]"));
   if (triggers.length === 0) return;
 
   const bubble = document.createElement("div");
@@ -457,7 +457,7 @@ function renderWinnerTimeline(
     .filter((value): value is number => Number.isFinite(value));
   const width = 960;
   const height = 280;
-  const pad = 44;
+  const pad = 58;
   const minX = Math.min(
     ...winners.map((row) => Date.parse(row.runCompletedAt ?? row.runStartedAt)),
   );
@@ -503,9 +503,22 @@ function renderWinnerTimeline(
     .map((row) => {
       const x = scaleX(row.runCompletedAt ?? row.runStartedAt).toFixed(1);
       const y = scaleY(row.calculated).toFixed(1);
-      return `<circle cx="${x}" cy="${y}" r="4"><title>#${row.runId} · ${escapeHtml(row.name)} · score ${fmt(row.calculated, options.calc === "div" ? 4 : 1)} · ${formatDateTime(row.runCompletedAt ?? row.runStartedAt)}</title></circle>`;
+      const fetched = formatDateTime(row.runCompletedAt ?? row.runStartedAt);
+      const score = fmt(row.calculated, options.calc === "div" ? 4 : 1);
+      const tip = `Run #${row.runId} · ${row.name} · X: ${fetched} · Y: ${score}`;
+      return `<circle class="chart-entry" cx="${x}" cy="${y}" r="4" tabindex="0" aria-label="${escapeAttr(tip)}" data-tip="${escapeAttr(tip)}" />`;
     })
     .join("");
+  const axes = renderChartAxes({
+    minX,
+    maxX,
+    minY,
+    maxY,
+    width,
+    height,
+    pad,
+    yFormat: (value) => fmt(value, options.calc === "div" ? 4 : 1),
+  });
   const changeChips = changes
     .slice(-12)
     .reverse()
@@ -546,10 +559,7 @@ function renderWinnerTimeline(
       </div>
     </div>
     <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Historic number one winner score timeline">
-      <line x1="${pad}" y1="${height - pad}" x2="${width - pad}" y2="${height - pad}" />
-      <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${height - pad}" />
-      <text x="${pad}" y="22">${escapeHtml(fmt(maxY, options.calc === "div" ? 4 : 1))}</text>
-      <text x="${pad}" y="${height - 10}">${escapeHtml(fmt(minY, options.calc === "div" ? 4 : 1))}</text>
+      ${axes}
       <polyline class="winner-line" points="${points}" />
       <g class="winner-dots">${circles}</g>
       ${labels}
@@ -627,7 +637,7 @@ function renderLineChart(input: {
 
   const width = 760;
   const height = 240;
-  const pad = 36;
+  const pad = 54;
   const minX = Math.min(...rows.map((row) => Date.parse(row.runCompletedAt ?? row.runStartedAt)));
   const maxX = Math.max(...rows.map((row) => Date.parse(row.runCompletedAt ?? row.runStartedAt)));
   let minY = Math.min(...values);
@@ -657,27 +667,130 @@ function renderLineChart(input: {
     .filter((point): point is string => point != null)
     .join(" ");
 
+  const metricLabel = title.replace(/ over time$/i, "");
   const circles = rows
     .map((row) => {
       const v = value(row);
       if (v == null) return "";
       const x = scaleX(row.runCompletedAt ?? row.runStartedAt).toFixed(1);
       const y = scaleY(v).toFixed(1);
-      return `<circle cx="${x}" cy="${y}" r="3"><title>#${row.runId} · ${format(v)} · ${formatDateTime(row.runCompletedAt ?? row.runStartedAt)}</title></circle>`;
+      const fetched = formatDateTime(row.runCompletedAt ?? row.runStartedAt);
+      const formattedValue = format(v);
+      const tip = `Run #${row.runId} · ${metricLabel} · X: ${fetched} · Y: ${formattedValue}`;
+      return `<circle class="chart-entry" cx="${x}" cy="${y}" r="3" tabindex="0" aria-label="${escapeAttr(tip)}" data-tip="${escapeAttr(tip)}" />`;
     })
     .join("");
+  const axes = renderChartAxes({
+    minX,
+    maxX,
+    minY,
+    maxY,
+    width,
+    height,
+    pad,
+    yFormat: format,
+  });
 
   return `<article class="chart">
     <h2>${escapeHtml(title)}</h2>
     <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeAttr(title)}">
-      <line x1="${pad}" y1="${height - pad}" x2="${width - pad}" y2="${height - pad}" />
-      <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${height - pad}" />
-      <text x="${pad}" y="20">${escapeHtml(format(maxY))}</text>
-      <text x="${pad}" y="${height - 8}">${escapeHtml(format(minY))}</text>
+      ${axes}
       <polyline points="${points}" style="stroke:${color}" />
       <g style="fill:${color}">${circles}</g>
     </svg>
   </article>`;
+}
+
+function renderChartAxes(input: {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  width: number;
+  height: number;
+  pad: number;
+  yFormat: (value: number) => string;
+  xTickCount?: number;
+  yTickCount?: number;
+}): string {
+  const {
+    minX,
+    maxX,
+    minY,
+    maxY,
+    width,
+    height,
+    pad,
+    yFormat,
+    xTickCount = 5,
+    yTickCount = 5,
+  } = input;
+  const plotLeft = pad;
+  const plotRight = width - pad;
+  const plotTop = pad;
+  const plotBottom = height - pad;
+  const scaleX = (x: number) => {
+    const t = maxX === minX ? 0.5 : (x - minX) / (maxX - minX);
+    return plotLeft + t * (plotRight - plotLeft);
+  };
+  const scaleY = (value: number) => {
+    const t = (value - minY) / (maxY - minY);
+    return plotBottom - t * (plotBottom - plotTop);
+  };
+  const xTicks = tickValues(minX, maxX, xTickCount);
+  const yTicks = tickValues(minY, maxY, yTickCount);
+  const xGrids = xTicks
+    .map((tick) => {
+      const x = scaleX(tick).toFixed(1);
+      return `<line class="axis-grid" x1="${x}" y1="${plotTop}" x2="${x}" y2="${plotBottom}" />`;
+    })
+    .join("");
+  const yGrids = yTicks
+    .map((tick) => {
+      const y = scaleY(tick).toFixed(1);
+      return `<line class="axis-grid" x1="${plotLeft}" y1="${y}" x2="${plotRight}" y2="${y}" />`;
+    })
+    .join("");
+  const xLabels = xTicks
+    .map((tick) => {
+      const x = scaleX(tick).toFixed(1);
+      return `<text class="axis-value x-axis-value" x="${x}" y="${plotBottom + 20}" text-anchor="middle">${escapeHtml(formatAxisDateTick(tick, minX, maxX))}</text>`;
+    })
+    .join("");
+  const yLabels = yTicks
+    .map((tick) => {
+      const y = scaleY(tick);
+      return `<text class="axis-value y-axis-value" x="${plotLeft - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end">${escapeHtml(yFormat(tick))}</text>`;
+    })
+    .join("");
+
+  return `<g class="axis-grid-lines">${yGrids}${xGrids}</g>
+      <line class="axis-line" x1="${plotLeft}" y1="${plotBottom}" x2="${plotRight}" y2="${plotBottom}" />
+      <line class="axis-line" x1="${plotLeft}" y1="${plotTop}" x2="${plotLeft}" y2="${plotBottom}" />
+      <g class="axis-values">${yLabels}${xLabels}</g>`;
+}
+
+function tickValues(min: number, max: number, count: number): number[] {
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return [];
+  if (count <= 1 || min === max) return [min];
+
+  return Array.from({ length: count }, (_, index) => min + ((max - min) * index) / (count - 1));
+}
+
+function formatAxisDateTick(value: number, min: number, max: number): string {
+  if (!Number.isFinite(value)) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const iso = date.toISOString();
+  const span = Math.abs(max - min);
+  const day = 24 * 60 * 60 * 1000;
+
+  if (span <= day) return iso.slice(11, 16);
+  if (span <= 32 * day) return `${iso.slice(5, 10)} ${iso.slice(11, 16)}`;
+  if (span <= 370 * day) return iso.slice(5, 10);
+  return iso.slice(0, 10);
 }
 
 function frontierFilterControl(options: ScoreOptions): string {
@@ -889,6 +1002,11 @@ code { background: var(--code-bg); padding: 2px 5px; border-radius: 6px; }
 .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
 svg { width: 100%; height: auto; overflow: visible; }
 svg line { stroke: var(--line); }
+svg .axis-grid { opacity: .32; }
+svg .axis-line { opacity: .9; }
+svg .axis-value { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+svg .chart-entry { cursor: help; }
+svg .chart-entry:hover, svg .chart-entry:focus-visible { stroke: var(--text); stroke-width: 2px; outline: none; }
 svg polyline { fill: none; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
 svg text { fill: var(--muted); font-size: 12px; }
 @media (max-width: 760px) { .theme-picker { margin-left: 0; } .winner-grid { grid-template-columns: 1fr; } }
