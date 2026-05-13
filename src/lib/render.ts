@@ -194,11 +194,14 @@ export function renderModelTimeline(input: {
   const latest = timeline[timeline.length - 1];
   const title = latest?.name ?? modelKey;
 
+  const scoreDigits = options.calc === "div" ? 4 : 1;
   const scoreChart = renderLineChart({
     rows: timeline,
     title: "Score over time",
     value: (row) => row.calculated,
     color: "#3b82f6",
+    format: (value) => fmt(value, scoreDigits),
+    roundDigits: scoreDigits,
   });
   const costChart = renderLineChart({
     rows: timeline,
@@ -452,8 +455,12 @@ function renderWinnerTimeline(
   }
 
   const latest = winners[winners.length - 1];
+  const scoreDigits = options.calc === "div" ? 4 : 1;
+  const scoreFormat = (value: number | null | undefined) => fmt(value, scoreDigits);
+  const chartScore = (row: ScoredRow<TimelineResult>) =>
+    roundForDisplay(row.calculated, scoreDigits);
   const values = winners
-    .map((row) => row.calculated)
+    .map(chartScore)
     .filter((value): value is number => Number.isFinite(value));
   const width = 960;
   const height = 280;
@@ -466,11 +473,7 @@ function renderWinnerTimeline(
   );
   let minY = Math.min(...values);
   let maxY = Math.max(...values);
-
-  if (minY === maxY) {
-    minY -= 1;
-    maxY += 1;
-  }
+  ({ minY, maxY } = chartYDomain({ minY, maxY, yFormat: scoreFormat }));
 
   const scaleX = (date: string | null) => {
     const x = Date.parse(date ?? winners[0].runStartedAt);
@@ -485,7 +488,7 @@ function renderWinnerTimeline(
   const points = winners
     .map(
       (row) =>
-        `${scaleX(row.runCompletedAt ?? row.runStartedAt).toFixed(1)},${scaleY(row.calculated).toFixed(1)}`,
+        `${scaleX(row.runCompletedAt ?? row.runStartedAt).toFixed(1)},${scaleY(chartScore(row)).toFixed(1)}`,
     )
     .join(" ");
   const changes = winners.filter(
@@ -495,16 +498,16 @@ function renderWinnerTimeline(
     .slice(-10)
     .map((row) => {
       const x = scaleX(row.runCompletedAt ?? row.runStartedAt);
-      const y = scaleY(row.calculated);
+      const y = scaleY(chartScore(row));
       return `<text class="winner-label" x="${x.toFixed(1)}" y="${Math.max(16, y - 10).toFixed(1)}">${escapeHtml(truncate(row.name, 22))}</text>`;
     })
     .join("");
   const circles = winners
     .map((row) => {
       const x = scaleX(row.runCompletedAt ?? row.runStartedAt).toFixed(1);
-      const y = scaleY(row.calculated).toFixed(1);
+      const y = scaleY(chartScore(row)).toFixed(1);
       const fetched = formatDateTime(row.runCompletedAt ?? row.runStartedAt);
-      const score = fmt(row.calculated, options.calc === "div" ? 4 : 1);
+      const score = scoreFormat(row.calculated);
       const tip = `Run #${row.runId} · ${row.name} · X: ${fetched} · Y: ${score}`;
       return `<circle class="chart-entry" cx="${x}" cy="${y}" r="4" tabindex="0" aria-label="${escapeAttr(tip)}" data-tip="${escapeAttr(tip)}" />`;
     })
@@ -517,7 +520,7 @@ function renderWinnerTimeline(
     width,
     height,
     pad,
-    yFormat: (value) => fmt(value, options.calc === "div" ? 4 : 1),
+    yFormat: scoreFormat,
   });
   const changeChips = changes
     .slice(-12)
@@ -527,7 +530,7 @@ function renderWinnerTimeline(
         row,
       ) => `<a class="winner-chip" href="/models/${encodeURIComponent(row.modelKey)}?${scoreOptionsToSearchParams(options).toString()}">
         <strong>${escapeHtml(row.name)}</strong>
-        <span>${formatDateTime(row.runCompletedAt ?? row.runStartedAt)} · ${fmt(row.calculated, options.calc === "div" ? 4 : 1)}</span>
+        <span>${formatDateTime(row.runCompletedAt ?? row.runStartedAt)} · ${scoreFormat(row.calculated)}</span>
       </a>`,
     )
     .join("");
@@ -539,7 +542,7 @@ function renderWinnerTimeline(
         <td>${link(`/runs/${row.runId}`, `#${row.runId}`)}</td>
         <td>${formatDateTime(row.runCompletedAt ?? row.runStartedAt)}</td>
         <td>${link(`/models/${encodeURIComponent(row.modelKey)}?${scoreOptionsToSearchParams(options).toString()}`, row.name)}</td>
-        <td class="num">${fmt(row.calculated, options.calc === "div" ? 4 : 1)}</td>
+        <td class="num">${scoreFormat(row.calculated)}</td>
         <td class="num">${fmt(row.quality, 1)}</td>
         <td class="num">${formatMoney(row.totalCost)}</td>
       </tr>`,
@@ -555,7 +558,7 @@ function renderWinnerTimeline(
       <div class="winner-latest">
         <span>Latest #1</span>
         ${link(`/models/${encodeURIComponent(latest.modelKey)}?${scoreOptionsToSearchParams(options).toString()}`, latest.name)}
-        <strong>${fmt(latest.calculated, options.calc === "div" ? 4 : 1)}</strong>
+        <strong>${scoreFormat(latest.calculated)}</strong>
       </div>
     </div>
     <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Historic number one winner score timeline">
@@ -627,9 +630,18 @@ function renderLineChart(input: {
   value: (row: ScoredRow<TimelineResult>) => number | null;
   color: string;
   format?: (value: number | null) => string;
+  roundDigits?: number;
 }): string {
-  const { rows, title, value, color, format = (v) => fmt(v, 1) } = input;
-  const values = rows.map(value).filter((v): v is number => v != null && Number.isFinite(v));
+  const { rows, title, value, color, format = (v) => fmt(v, 1), roundDigits } = input;
+  const chartValue = (row: ScoredRow<TimelineResult>) => {
+    const v = value(row);
+    return v == null || !Number.isFinite(v)
+      ? null
+      : roundDigits == null
+        ? v
+        : roundForDisplay(v, roundDigits);
+  };
+  const values = rows.map(chartValue).filter((v): v is number => v != null);
 
   if (rows.length === 0 || values.length === 0) {
     return `<article class="chart"><h2>${escapeHtml(title)}</h2><p class="empty">No chart data.</p></article>`;
@@ -642,10 +654,7 @@ function renderLineChart(input: {
   const maxX = Math.max(...rows.map((row) => Date.parse(row.runCompletedAt ?? row.runStartedAt)));
   let minY = Math.min(...values);
   let maxY = Math.max(...values);
-  if (minY === maxY) {
-    minY -= 1;
-    maxY += 1;
-  }
+  ({ minY, maxY } = chartYDomain({ minY, maxY, yFormat: format }));
 
   const scaleX = (date: string | null) => {
     const x = Date.parse(date ?? rows[0].runStartedAt);
@@ -659,7 +668,7 @@ function renderLineChart(input: {
 
   const points = rows
     .map((row) => {
-      const v = value(row);
+      const v = chartValue(row);
       return v == null
         ? null
         : `${scaleX(row.runCompletedAt ?? row.runStartedAt).toFixed(1)},${scaleY(v).toFixed(1)}`;
@@ -670,7 +679,7 @@ function renderLineChart(input: {
   const metricLabel = title.replace(/ over time$/i, "");
   const circles = rows
     .map((row) => {
-      const v = value(row);
+      const v = chartValue(row);
       if (v == null) return "";
       const x = scaleX(row.runCompletedAt ?? row.runStartedAt).toFixed(1);
       const y = scaleY(v).toFixed(1);
@@ -768,6 +777,60 @@ function renderChartAxes(input: {
       <line class="axis-line" x1="${plotLeft}" y1="${plotBottom}" x2="${plotRight}" y2="${plotBottom}" />
       <line class="axis-line" x1="${plotLeft}" y1="${plotTop}" x2="${plotLeft}" y2="${plotBottom}" />
       <g class="axis-values">${yLabels}${xLabels}</g>`;
+}
+
+function chartYDomain(input: {
+  minY: number;
+  maxY: number;
+  yFormat: (value: number) => string;
+  yTickCount?: number;
+}): { minY: number; maxY: number } {
+  let { minY, maxY } = input;
+  const { yFormat, yTickCount = 5 } = input;
+
+  if (!Number.isFinite(minY) || !Number.isFinite(maxY)) return { minY, maxY };
+  if (minY > maxY) [minY, maxY] = [maxY, minY];
+
+  const center = (minY + maxY) / 2;
+  let halfRange = (maxY - minY) / 2;
+
+  if (halfRange === 0) {
+    halfRange = Math.max(Math.abs(center) * 0.01, 0.01);
+  } else {
+    halfRange = Math.max(halfRange, Math.max(Math.abs(center) * 1e-6, 1e-9));
+  }
+
+  let low = center - halfRange;
+  let high = center + halfRange;
+
+  for (let index = 0; index < 32; index++) {
+    if (!hasDuplicateTickLabels(low, high, yFormat, yTickCount)) {
+      return { minY: low, maxY: high };
+    }
+
+    halfRange *= 2;
+    low = center - halfRange;
+    high = center + halfRange;
+  }
+
+  return { minY: low, maxY: high };
+}
+
+function hasDuplicateTickLabels(
+  minY: number,
+  maxY: number,
+  yFormat: (value: number) => string,
+  yTickCount: number,
+): boolean {
+  const labels = tickValues(minY, maxY, yTickCount).map(yFormat);
+  return new Set(labels).size !== labels.length;
+}
+
+function roundForDisplay(value: number, digits: number): number {
+  if (!Number.isFinite(value)) return value;
+
+  const safeDigits = Math.min(100, Math.max(0, Math.floor(digits)));
+  return Number(value.toFixed(safeDigits));
 }
 
 function tickValues(min: number, max: number, count: number): number[] {
