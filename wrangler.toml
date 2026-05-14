@@ -12,6 +12,10 @@ crons = ["0 * * * *"]
 [vars]
 AA_SOURCE_URL = "https://artificialanalysis.ai/models"
 
+[assets]
+directory = "public"
+binding = "ASSETS"
+
 [observability]
 enabled = true
 head_sampling_rate = 1

@@ -13,7 +13,9 @@ import {
   getTimelineForModel,
 } from "./lib/db";
 import { runFetchJob } from "./lib/job";
+import type { RenderContext } from "./lib/render";
 import {
+  normalizeTheme,
   renderErrorPage,
   renderHistory,
   renderHome,
@@ -25,6 +27,8 @@ import { gunzipBase64ChunksToString } from "./lib/storage";
 import type { Bindings } from "./types";
 
 const app = new Hono<{ Bindings: Bindings }>();
+const THEME_COOKIE = "aa-theme";
+const THEME_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 app.use("*", async (c, next) => {
   const url = new URL(c.req.url);
@@ -36,8 +40,21 @@ app.use("*", async (c, next) => {
   await next();
 });
 
+app.get("/assets/*", async (c) => c.env.ASSETS.fetch(c.req.raw));
+app.get("/favicon.ico", (c) => c.redirect("/assets/favicon.svg", 301));
+
+app.get("/theme", (c) => {
+  const url = new URL(c.req.url);
+  const theme = normalizeTheme(url.searchParams.get("theme"));
+  const returnTo = safeReturnTo(url.searchParams.get("returnTo"));
+
+  c.header("Set-Cookie", themeCookie(theme));
+  return c.redirect(returnTo, 303);
+});
+
 app.get("/", async (c) => {
   const url = new URL(c.req.url);
+  const context = getRenderContext(c.req.raw);
   const options = parseScoreOptions(url.searchParams);
   const requestedRunId = positiveInt(url.searchParams.get("run"));
   const runs = await getRuns(c.env, 50);
@@ -47,16 +64,19 @@ app.get("/", async (c) => {
 
   if (!run || run.status !== "success") {
     return c.html(
-      renderHome({
-        run: null,
-        runs,
-        rows: [],
-        options,
-        selectedRunId: requestedRunId,
-        topQualityModel: null,
-        effectiveSortBy: options.sort,
-        winnerTimeline: [],
-      }),
+      renderHome(
+        {
+          run: null,
+          runs,
+          rows: [],
+          options,
+          selectedRunId: requestedRunId,
+          topQualityModel: null,
+          effectiveSortBy: options.sort,
+          winnerTimeline: [],
+        },
+        context,
+      ),
       run ? 404 : 200,
     );
   }
@@ -69,42 +89,50 @@ app.get("/", async (c) => {
   const winnerTimeline = buildWinnerTimeline(historicResults, options);
 
   return c.html(
-    renderHome({
-      run,
-      runs,
-      rows: scored.rows,
-      options,
-      selectedRunId: run.id,
-      topQualityModel: scored.topQualityModel,
-      effectiveSortBy: scored.effectiveSortBy,
-      winnerTimeline,
-    }),
+    renderHome(
+      {
+        run,
+        runs,
+        rows: scored.rows,
+        options,
+        selectedRunId: run.id,
+        topQualityModel: scored.topQualityModel,
+        effectiveSortBy: scored.effectiveSortBy,
+        winnerTimeline,
+      },
+      context,
+    ),
   );
 });
 
 app.get("/runs", async (c) => {
   const runs = await getRuns(c.env, 250);
-  return c.html(renderRuns(runs));
+  return c.html(renderRuns(runs, getRenderContext(c.req.raw)));
 });
 
 app.get("/runs/:id", async (c) => {
+  const context = getRenderContext(c.req.raw);
   const runId = positiveInt(c.req.param("id"));
-  if (!runId) return c.html(renderErrorPage("Not found", "Invalid run id"), 404);
+  if (!runId) return c.html(renderErrorPage("Not found", "Invalid run id", context), 404);
 
   const run = await getRun(c.env, runId);
-  if (!run) return c.html(renderErrorPage("Not found", `Run #${runId} does not exist`), 404);
+  if (!run)
+    return c.html(renderErrorPage("Not found", `Run #${runId} does not exist`, context), 404);
 
   const options = parseScoreOptions(new URL(c.req.url).searchParams);
   const results = await getResultsForRun(c.env, run.id);
   const scored = scoreRows(results, options);
 
   return c.html(
-    renderRunDetail({
-      run,
-      rows: scored.rows,
-      options,
-      topQualityModel: scored.topQualityModel,
-    }),
+    renderRunDetail(
+      {
+        run,
+        rows: scored.rows,
+        options,
+        topQualityModel: scored.topQualityModel,
+      },
+      context,
+    ),
   );
 });
 
@@ -131,7 +159,7 @@ app.get("/runs/:id/raw", async (c) => {
 
 app.get("/history", async (c) => {
   const models = await getModelSummaries(c.env);
-  return c.html(renderHistory(models));
+  return c.html(renderHistory(models, getRenderContext(c.req.raw)));
 });
 
 app.get("/models/:modelKey", async (c) => {
@@ -144,7 +172,9 @@ app.get("/models/:modelKey", async (c) => {
     ),
   );
 
-  return c.html(renderModelTimeline({ modelKey, timeline: scored, options }));
+  return c.html(
+    renderModelTimeline({ modelKey, timeline: scored, options }, getRenderContext(c.req.raw)),
+  );
 });
 
 app.get("/api/runs", async (c) => {
@@ -214,11 +244,16 @@ app.post("/admin/fetch", async (c) => {
 
 app.get("/healthz", (c) => c.json({ ok: true }));
 
-app.notFound((c) => c.html(renderErrorPage("Not found", "This page does not exist."), 404));
+app.notFound((c) =>
+  c.html(
+    renderErrorPage("Not found", "This page does not exist.", getRenderContext(c.req.raw)),
+    404,
+  ),
+);
 
 app.onError((error, c) => {
   console.error(error);
-  return c.html(renderErrorPage("Error", error.message), 500);
+  return c.html(renderErrorPage("Error", error.message, getRenderContext(c.req.raw)), 500);
 });
 
 export default {
@@ -259,6 +294,46 @@ function buildWinnerTimeline(
       String(b.runCompletedAt ?? b.runStartedAt),
     ),
   );
+}
+
+function getRenderContext(request: Request): RenderContext {
+  const url = new URL(request.url);
+  return {
+    theme: getCookieValue(request.headers.get("cookie"), THEME_COOKIE),
+    currentPath: `${url.pathname}${url.search}`,
+  };
+}
+
+function getCookieValue(header: string | null, name: string): string | null {
+  if (!header) return null;
+
+  for (const cookie of header.split(";")) {
+    const [rawName, ...rawValue] = cookie.trim().split("=");
+    if (rawName !== name) continue;
+
+    try {
+      return decodeURIComponent(rawValue.join("="));
+    } catch (_) {
+      return rawValue.join("=");
+    }
+  }
+
+  return null;
+}
+
+function themeCookie(theme: string): string {
+  return `${THEME_COOKIE}=${encodeURIComponent(theme)}; Path=/; Max-Age=${THEME_COOKIE_MAX_AGE}; SameSite=Lax`;
+}
+
+function safeReturnTo(value: string | null): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
+
+  try {
+    const url = new URL(value, "https://artificialaggregator.com");
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch (_) {
+    return "/";
+  }
 }
 
 function positiveInt(value: string | null | undefined): number | null {
